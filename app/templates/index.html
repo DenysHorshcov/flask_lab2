@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Popular Movies</title>
+</head>
+<body>
+    <h1>Top 10 Popular Movies</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Release Date</th>
+                <th>IMDb Score</th>
+                <th>Popularity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movie in movies %}
+            <tr>
+                <td>{{ movie.title }}</td>
+                <td>{{ movie.release.strftime('%Y-%m-%d') if movie.release else "Unknown" }}</td>
+                <td>{{ movie.imdb_score }}</td>
+                <td>{{ movie.popularity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
