@@ -3,51 +3,43 @@
 {% block title %}Popular Movies{% endblock %}
 
 {% block content %}
-    <h1 class="mb-4 text-center">Popular Movies</h1>
+<div class="container mt-5">
+    <h1>Popular Movies</h1>
 
     <div id="movie-list" class="list-group">
-        {% for movie in movies.items %}
-        <a href="{{ url_for('main.movie_detail', movie_id=movie.id) }}" class="list-group-item list-group-item-action">
-            <h5 class="mb-1">{{ movie.title }}</h5>
-                <small>
-                    Release: {{ movie.release.strftime('%Y-%m-%d') if movie.release else "Unknown" }},
-                    IMDb Score: {{ movie.imdb_score or "N/A" }}
-                </small>
-        </a>
-        {% endfor %}
+        <!-- Сюди буде довантажуватись список через JavaScript -->
     </div>
 
-    {% if movies.has_next %}
-    <div class="text-center my-4">
+    <div class="d-grid mt-4">
         <button id="load-more" class="btn btn-primary">Show More</button>
     </div>
-    {% endif %}
 </div>
 
 <script>
-let page = 2;
+const movies = JSON.parse('{{ movies_json|safe }}');
+let currentIndex = 0;
+const moviesPerPage = 8;
 
-document.getElementById('load-more')?.addEventListener('click', function() {
-    fetch(`/movies/load?page=${page}`)
-        .then(response => response.json())
-        .then(data => {
-            const movieList = document.getElementById('movie-list');
-            data.movies.forEach(movie => {
-                const div = document.createElement('div');
-                div.className = 'list-group-item';
-                div.innerHTML = `
-                    <h5 class="mb-1">${movie.title}</h5>
-                    <small>
-                        Release: ${movie.release}, IMDb Score: ${movie.imdb_score ?? "N/A"}
-                    </small>
-                `;
-                movieList.appendChild(div);
-            });
-            if (!data.has_next) {
-                document.getElementById('load-more').style.display = 'none';
-            }
-            page += 1;
-        });
-});
+function showMoreMovies() {
+    const movieList = document.getElementById('movie-list');
+    for (let i = currentIndex; i < currentIndex + moviesPerPage && i < movies.length; i++) {
+        const a = document.createElement('a');
+        a.className = 'list-group-item list-group-item-action';
+        a.href = `/movie/${movies[i].id}`;
+        a.innerHTML = `
+            <h5 class="mb-1">${movies[i].title}</h5>
+            <small>Release: ${movies[i].release || "Unknown"}, IMDb Score: ${movies[i].imdb_score || "N/A"}</small>
+        `;
+        movieList.appendChild(a);
+    }
+    currentIndex += moviesPerPage;
+    if (currentIndex >= movies.length) {
+        document.getElementById('load-more').style.display = 'none';
+    }
+}
+
+document.getElementById('load-more')?.addEventListener('click', showMoreMovies);
+document.addEventListener('DOMContentLoaded', showMoreMovies);
 </script>
+
 {% endblock %}

@@ -16,7 +16,9 @@
         <div class="col-md-3 mb-4">
             <div class="card">
                 <div class="card-body text-center">
-                    <h5 class="card-title">{{ person.name }}</h5>
+                    <h5 class="card-title">
+                        <a href="{{ url_for('main.person_detail', person_id=person.id) }}">{{ person.name }}</a>
+                    </h5>
                 </div>
             </div>
         </div>
