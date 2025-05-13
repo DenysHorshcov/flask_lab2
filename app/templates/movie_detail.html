@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ movie.title }}</h1>
+    <p>Release Date: {{ movie.release.strftime('%Y-%m-%d') if movie.release else "Unknown" }}</p>
+    <p>IMDb Score: {{ movie.imdb_score or "N/A" }}</p>
+    <p>Popularity: {{ movie.popularity or "N/A" }}</p>
+    <hr>
+
+    {% for role, persons in cast_by_role.items() %}
+    <h3 class="mt-5">{{ role }}</h3>
+    <div class="row">
+        {% for person in persons %}
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ person.name }}</h5>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,30 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Popular Movies</title>
-</head>
-<body>
-    <h1>Top 10 Popular Movies</h1>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Release Date</th>
-                <th>IMDb Score</th>
-                <th>Popularity</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for movie in movies %}
-            <tr>
-                <td>{{ movie.title }}</td>
-                <td>{{ movie.release.strftime('%Y-%m-%d') if movie.release else "Unknown" }}</td>
-                <td>{{ movie.imdb_score }}</td>
-                <td>{{ movie.popularity }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Popular Movies{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4 text-center">Popular Movies</h1>
+
+    <div id="movie-list" class="list-group">
+        {% for movie in movies.items %}
+        <a href="{{ url_for('main.movie_detail', movie_id=movie.id) }}" class="list-group-item list-group-item-action">
+            <h5 class="mb-1">{{ movie.title }}</h5>
+                <small>
+                    Release: {{ movie.release.strftime('%Y-%m-%d') if movie.release else "Unknown" }},
+                    IMDb Score: {{ movie.imdb_score or "N/A" }}
+                </small>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if movies.has_next %}
+    <div class="text-center my-4">
+        <button id="load-more" class="btn btn-primary">Show More</button>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+let page = 2;
+
+document.getElementById('load-more')?.addEventListener('click', function() {
+    fetch(`/movies/load?page=${page}`)
+        .then(response => response.json())
+        .then(data => {
+            const movieList = document.getElementById('movie-list');
+            data.movies.forEach(movie => {
+                const div = document.createElement('div');
+                div.className = 'list-group-item';
+                div.innerHTML = `
+                    <h5 class="mb-1">${movie.title}</h5>
+                    <small>
+                        Release: ${movie.release}, IMDb Score: ${movie.imdb_score ?? "N/A"}
+                    </small>
+                `;
+                movieList.appendChild(div);
+            });
+            if (!data.has_next) {
+                document.getElementById('load-more').style.display = 'none';
+            }
+            page += 1;
+        });
+});
+</script>
+{% endblock %}
