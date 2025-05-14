@@ -4,3 +4,5 @@ pymysql
 python-dotenv
 cryptography
 requests
+python-dotenv
+Flask-Login

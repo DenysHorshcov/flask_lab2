@@ -6,6 +6,41 @@
 <div class="container mt-5">
     <h1>Popular Movies</h1>
 
+    <!-- 🔎 Пошук -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <input type="text" id="search-input" class="form-control" placeholder="Search movie by title...">
+        </div>
+        <div class="col-md-2">
+            <button id="search-button" class="btn btn-primary w-100">Search</button>
+        </div>
+    </div>
+
+    <!-- Сортування -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <select id="sort-select" class="form-select">
+                <option value="popularity" selected>Sort by Popularity</option>
+                <option value="release">Sort by Release Date</option>
+                <option value="imdb_score">Sort by IMDb Score</option>
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-center">
+            <div class="form-check me-3">
+                <input class="form-check-input" type="radio" name="sort-order" id="descending" value="desc" checked>
+                <label class="form-check-label" for="descending">
+                    Descending
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="sort-order" id="ascending" value="asc">
+                <label class="form-check-label" for="ascending">
+                    Ascending
+                </label>
+            </div>
+        </div>
+    </div>
+
     <div id="movie-list" class="list-group">
         <!-- Сюди буде довантажуватись список через JavaScript -->
     </div>
@@ -16,30 +51,87 @@
 </div>
 
 <script>
-const movies = JSON.parse('{{ movies_json|safe }}');
+const originalMovies = JSON.parse('{{ movies_json|safe }}');
+let movies = [...originalMovies];
+let filteredMovies = [...originalMovies];
 let currentIndex = 0;
 const moviesPerPage = 8;
 
-function showMoreMovies() {
+// Функція для оновлення списку фільмів
+function renderMovies(reset = false) {
     const movieList = document.getElementById('movie-list');
-    for (let i = currentIndex; i < currentIndex + moviesPerPage && i < movies.length; i++) {
+    if (reset) {
+        movieList.innerHTML = '';
+        currentIndex = 0;
+    }
+    for (let i = currentIndex; i < currentIndex + moviesPerPage && i < filteredMovies.length; i++) {
         const a = document.createElement('a');
         a.className = 'list-group-item list-group-item-action';
-        a.href = `/movie/${movies[i].id}`;
+        a.href = `/movie/${filteredMovies[i].id}`;
         a.innerHTML = `
-            <h5 class="mb-1">${movies[i].title}</h5>
-            <small>Release: ${movies[i].release || "Unknown"}, IMDb Score: ${movies[i].imdb_score || "N/A"}</small>
+            <h5 class="mb-1">${filteredMovies[i].title}</h5>
+            <small>Release: ${filteredMovies[i].release || "Unknown"}, IMDb Score: ${filteredMovies[i].imdb_score || "N/A"}</small>
         `;
         movieList.appendChild(a);
     }
     currentIndex += moviesPerPage;
-    if (currentIndex >= movies.length) {
+    if (currentIndex >= filteredMovies.length) {
         document.getElementById('load-more').style.display = 'none';
+    } else {
+        document.getElementById('load-more').style.display = 'block';
     }
 }
 
-document.getElementById('load-more')?.addEventListener('click', showMoreMovies);
-document.addEventListener('DOMContentLoaded', showMoreMovies);
+// Отримуємо напрям сортування
+function getSortOrder() {
+    return document.querySelector('input[name="sort-order"]:checked').value;
+}
+
+// Сортування за обраним полем і напрямом
+function sortMovies() {
+    const sortBy = document.getElementById('sort-select').value;
+    const order = getSortOrder();
+    filteredMovies.sort((a, b) => {
+        let aVal = a[sortBy] || '';
+        let bVal = b[sortBy] || '';
+        if (sortBy === 'release') {
+            return order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        } else {
+            aVal = parseFloat(aVal) || 0;
+            bVal = parseFloat(bVal) || 0;
+            return order === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+    });
+    renderMovies(true);
+}
+
+// Пошук фільмів
+function searchMovies() {
+    const query = document.getElementById('search-input').value.trim().toLowerCase();
+    filteredMovies = movies.filter(movie => movie.title.toLowerCase().includes(query));
+    sortMovies(); // Після пошуку також відсортувати за обраним правилом
+}
+
+// Події
+document.getElementById('load-more')?.addEventListener('click', function() {
+    renderMovies(false);
+});
+
+document.getElementById('sort-select').addEventListener('change', sortMovies);
+document.querySelectorAll('input[name="sort-order"]').forEach(radio => {
+    radio.addEventListener('change', sortMovies);
+});
+document.getElementById('search-button').addEventListener('click', searchMovies);
+document.getElementById('search-input').addEventListener('keyup', function(event) {
+    if (event.key === 'Enter') {
+        searchMovies();
+    }
+});
+
+// Початкове завантаження
+document.addEventListener('DOMContentLoaded', function() {
+    renderMovies(false);
+});
 </script>
 
 {% endblock %}

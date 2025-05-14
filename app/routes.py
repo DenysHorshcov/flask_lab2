@@ -17,7 +17,8 @@ def index():
             "id": movie.id,
             "title": movie.title,
             "release": movie.release.strftime('%Y-%m-%d') if movie.release else "",
-            "imdb_score": movie.imdb_score or ""
+            "imdb_score": movie.imdb_score or "",
+            "popularity": movie.popularity or 0
         }
         for movie in movies
     ])
