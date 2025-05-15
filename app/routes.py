@@ -5,6 +5,9 @@ from sqlalchemy.sql import text
 from .models import Movie, MoviePerson, Person, PersonRole, Role
 from .tmdb_loader import fetch_and_store_popular_movies
 from flask import jsonify
+from flask import flash
+from app.models import User
+from flask import redirect, url_for
 import json
 
 main = Blueprint('main', __name__)
@@ -87,3 +90,60 @@ def load_tmdb():
     except Exception as e:
         print(f"❌ ERROR during TMDb fetch: {e}")
         return f"❌ Error: {e}", 500
+
+from flask_login import login_required, current_user
+
+@main.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html', user=current_user)
+
+
+@main.route('/edit-profile', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    if request.method == 'POST':
+        new_username = request.form.get('new_username')
+        if new_username:
+            existing_user = User.query.filter_by(username=new_username).first()
+            if existing_user:
+                flash('This username is already taken. Please choose another.', 'danger')
+            else:
+                current_user.username = new_username
+                db.session.commit()
+                flash('Username updated successfully!', 'success')
+        return redirect(url_for('main.profile'))
+    
+    # Якщо метод GET — просто показуємо форму
+    return render_template('edit_profile.html')
+
+
+from flask import request
+from app.models import UserMovieRating, Movie
+
+@main.route('/rate-movie/<int:movie_id>', methods=['POST'])
+@login_required
+def rate_movie(movie_id):
+    rating = request.form.get('rating')
+
+    if not rating:
+        flash('Rating is required.', 'danger')
+        return redirect(url_for('main.index'))
+
+    # Перевірити чи є такий фільм
+    movie = Movie.query.get(movie_id)
+    if not movie:
+        flash('Movie not found.', 'danger')
+        return redirect(url_for('main.index'))
+
+    # Додати оцінку в спеціальну таблицю (наприклад UserMovie)
+    user_movie = UserMovieRating.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
+    if user_movie:
+        user_movie.rating = rating
+    else:
+        user_movie = UserMovieRating(user_id=current_user.id, movie_id=movie_id, rating=rating)
+        db.session.add(user_movie)
+
+    db.session.commit()
+    flash('Your rating has been saved!', 'success')
+    return redirect(url_for('main.index'))

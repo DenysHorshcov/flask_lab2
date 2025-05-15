@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">User Profile</h1>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">User name: {{ user.username }}</h5>
+            <a href="{{ url_for('main.edit_profile') }}" class="btn btn-primary mt-3">Edit Profile name</a>
+        </div>
+    </div>
+    <h2>Your Rated Movies</h2>
+    <ul>
+        {% for rating in current_user.ratings %}
+        <li>{{ rating.movie.title }} — Your Score: {{ rating.rating }} / 10</li>
+        {% else %}
+        <p>You haven't rated any movies yet.</p>
+        {% endfor %}
+    </ul>
+
+</div>
+{% endblock %}
