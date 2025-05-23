@@ -1,30 +1,107 @@
+
 {% extends "base.html" %}
 
 {% block title %}{{ movie.title }}{% endblock %}
 
 {% block content %}
-    <h1>{{ movie.title }}</h1>
-    <p>Release Date: {{ movie.release.strftime('%Y-%m-%d') if movie.release else "Unknown" }}</p>
-    <p>IMDb Score: {{ movie.imdb_score or "N/A" }}</p>
-    <p>Popularity: {{ movie.popularity or "N/A" }}</p>
-    <hr>
+<div class="container mt-4">
+    <h2 class="display-5 mb-4" style="font-weight: bold; color: saddlebrown;">{{ movie.title }}</h2>
+
+    <div class="mb-4">
+        <p class="movie-info mb-1"><strong>Release Date:</strong> {{ movie.release.strftime('%Y-%m-%d') if movie.release else "Unknown" }}</p>
+        <p class="movie-info mb-1"><strong>IMDb Score:</strong> {{ movie.imdb_score or 'N/A' }}</p>
+        <p class="movie-info mb-1"><strong>Popularity:</strong> {{ movie.popularity or 'N/A' }}</p>
+
+
+        {% if current_user.is_authenticated %}
+    {% if user_rating %}
+       <div id="rating-block" class="d-flex align-items-center flex-wrap">
+            <small class="me-3">
+                <strong>Your Score:</strong>
+                <span id="movie-user-score">{{ user_rating if user_rating else "N/A" }}</span>
+            </small>
+            <select id="rating-select" class="form-select form-select-sm w-auto me-2">
+                <option value="">Rate</option>
+                {% for i in range(0, 21) %}
+                    {% set score = i / 2 %}
+                    <option value="{{ score }}" {% if user_rating == score %}selected{% endif %}>{{ score }}</option>
+                {% endfor %}
+            </select>
+            <button id="delete-rating" class="btn btn-sm btn-danger">Delete</button>
+        </div>
+    {% else %}
+        <form action="{{ url_for('main.rate_movie', movie_id=movie.id) }}" method="POST" class="d-flex align-items-center" style="max-width: 300px;">
+            <strong class="me-2">Your Score:</strong>
+            <input type="number" name="rating" class="form-control me-2" step="0.5" min="0" max="10" placeholder="Your score" required>
+            <input type="hidden" name="action" value="create">
+            <button type="submit" class="btn btn-sm btn-success">Rate</button>
+        </form>
+    {% endif %}
+{% endif %}
+
+        
+    </div>
 
     {% for role, persons in cast_by_role.items() %}
-    <h3 class="mt-5">{{ role }}</h3>
-    <div class="row">
-        {% for person in persons %}
-        <div class="col-md-3 mb-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="card-title">
-                        <a href="{{ url_for('main.person_detail', person_id=person.id) }}">{{ person.name }}</a>
-                    </h5>
+        <h3 class="mt-5">{{ role }}</h3>
+        <div class="row">
+            {% for person in persons %}
+            <div class="col-md-3 mb-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <a href="{{ url_for('main.person_detail', person_id=person.id) }}">{{ person.name }}</a>
+                        </h5>
+                    </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
     {% endfor %}
 </div>
 
+{% if current_user.is_authenticated %}
+<script>
+const movieId = {{ movie.id }};
+const userRating = {{ user_rating if user_rating is not none else 'null' }};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const ratingSelect = document.getElementById('rating-select');
+    const deleteButton = document.getElementById('delete-rating');
+    const ratingDisplay = document.getElementById('movie-user-score');
+
+    ratingSelect.addEventListener('change', () => {
+        const value = ratingSelect.value;
+        if (!value) return;
+
+        fetch(`/rate-movie/${movieId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating: parseFloat(value) })
+        }).then(response => {
+            if (response.ok) {
+                ratingDisplay.textContent = value;
+            } else {
+                alert('Failed to rate the movie.');
+            }
+        });
+    });
+
+    deleteButton.addEventListener('click', () => {
+        fetch(`/rate-movie/${movieId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete' })
+        }).then(response => {
+            if (response.ok) {
+                ratingDisplay.textContent = 'N/A';
+                ratingSelect.value = '';
+            } else {
+                alert('Failed to delete rating.');
+            }
+        });
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

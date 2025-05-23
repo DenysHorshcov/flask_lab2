@@ -2,7 +2,7 @@ from flask import Blueprint, request, render_template
 
 from .models import db
 from sqlalchemy.sql import text
-from .models import Movie, MoviePerson, Person, PersonRole, Role
+from .models import Movie, MoviePerson, Person, PersonRole, Role, UserMovieRating
 from .tmdb_loader import fetch_and_store_popular_movies
 from flask import jsonify
 from flask import flash
@@ -14,19 +14,32 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    movies = Movie.query.order_by(Movie.popularity.desc()).all()
-    movies_json = json.dumps([
+    movies = Movie.query.all()
+    movies_json = [
         {
-            "id": movie.id,
-            "title": movie.title,
-            "release": movie.release.strftime('%Y-%m-%d') if movie.release else "",
-            "imdb_score": movie.imdb_score or "",
-            "popularity": movie.popularity or 0
+            'id': movie.id,
+            'title': movie.title,
+            'release': movie.release.strftime('%Y-%m-%d') if movie.release else '',
+            'imdb_score': movie.imdb_score,
+            'popularity': movie.popularity
         }
         for movie in movies
-    ])
-    return render_template('index.html', movies_json=movies_json)
+    ]
 
+    user_ratings = []
+    if current_user.is_authenticated:
+        user_ratings = [
+            {'movie_id': r.movie_id, 'rating': r.rating}
+            for r in UserMovieRating.query.filter_by(user_id=current_user.id).all()
+        ]
+
+    return render_template(
+        'index.html',
+        movies_json=movies_json,
+        user_ratings=user_ratings,
+        is_authenticated=current_user.is_authenticated,
+        current_user_id=current_user.get_id() if current_user.is_authenticated else None
+    )
 
 @main.route('/movies/load')
 def load_more_movies():
@@ -43,7 +56,7 @@ def load_more_movies():
 @main.route('/movie/<int:movie_id>')
 def movie_detail(movie_id):
     movie = Movie.query.get_or_404(movie_id)
-    
+
     # знайти усіх людей, які брали участь у фільмі
     movie_persons = db.session.query(Person, Role).\
         join(MoviePerson, MoviePerson.person_id == Person.id).\
@@ -58,7 +71,20 @@ def movie_detail(movie_id):
             cast_by_role[role.title] = []
         cast_by_role[role.title].append(person)
 
-    return render_template('movie_detail.html', movie=movie, cast_by_role=cast_by_role)
+    # додано: отримати оцінку поточного користувача, якщо є
+    user_rating = None
+    if current_user.is_authenticated:
+        rating = UserMovieRating.query.filter_by(user_id=current_user.id, movie_id=movie.id).first()
+        if rating:
+            user_rating = rating.rating
+
+    return render_template(
+        'movie_detail.html',
+        movie=movie,
+        cast_by_role=cast_by_role,
+        user_rating=user_rating
+    )
+
 
 @main.route('/person/<int:person_id>')
 def person_detail(person_id):
@@ -121,29 +147,83 @@ def edit_profile():
 from flask import request
 from app.models import UserMovieRating, Movie
 
+# @main.route('/rate-movie/<int:movie_id>', methods=['POST'])
+# @login_required
+# def rate_movie(movie_id):
+#     rating = request.form.get('rating')
+
+#     if not rating:
+#         flash('Rating is required.', 'danger')
+#         return redirect(url_for('main.index'))
+
+#     # Перевірити чи є такий фільм
+#     movie = Movie.query.get(movie_id)
+#     if not movie:
+#         flash('Movie not found.', 'danger')
+#         return redirect(url_for('main.index'))
+
+#     # Додати оцінку в спеціальну таблицю (наприклад UserMovie)
+#     user_movie = UserMovieRating.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
+#     if user_movie:
+#         user_movie.rating = rating
+#     else:
+#         user_movie = UserMovieRating(user_id=current_user.id, movie_id=movie_id, rating=rating)
+#         db.session.add(user_movie)
+
+#     db.session.commit()
+#     flash('Your rating has been saved!', 'success')
+#     return redirect(url_for('main.index'))
+
 @main.route('/rate-movie/<int:movie_id>', methods=['POST'])
 @login_required
 def rate_movie(movie_id):
-    rating = request.form.get('rating')
+    data = request.get_json()
+    action = data.get('action')
+    movie = Movie.query.get_or_404(movie_id)
 
-    if not rating:
-        flash('Rating is required.', 'danger')
-        return redirect(url_for('main.index'))
+    existing_rating = UserMovieRating.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
 
-    # Перевірити чи є такий фільм
-    movie = Movie.query.get(movie_id)
-    if not movie:
-        flash('Movie not found.', 'danger')
-        return redirect(url_for('main.index'))
+    if action == 'delete':
+        if existing_rating:
+            db.session.delete(existing_rating)
+            db.session.commit()
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'No rating to delete'}), 404
 
-    # Додати оцінку в спеціальну таблицю (наприклад UserMovie)
-    user_movie = UserMovieRating.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
-    if user_movie:
-        user_movie.rating = rating
+    rating = data.get('rating')
+    if rating is None:
+        return jsonify({'error': 'Rating is required'}), 400
+
+    if existing_rating:
+        existing_rating.rating = rating
     else:
-        user_movie = UserMovieRating(user_id=current_user.id, movie_id=movie_id, rating=rating)
-        db.session.add(user_movie)
+        new_rating = UserMovieRating(user_id=current_user.id, movie_id=movie_id, rating=rating)
+        db.session.add(new_rating)
 
     db.session.commit()
-    flash('Your rating has been saved!', 'success')
-    return redirect(url_for('main.index'))
+    return jsonify({'success': True})
+
+
+
+@main.route('/edit-rating/<int:movie_id>', methods=['POST'])
+@login_required
+def edit_rating(movie_id):
+    data = request.get_json()
+    new_rating = data.get('rating')
+    rating = UserMovieRating.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
+    if rating:
+        rating.rating = new_rating
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False}), 404
+
+@main.route('/delete-rating/<int:movie_id>', methods=['DELETE'])
+@login_required
+def delete_rating(movie_id):
+    rating = UserMovieRating.query.filter_by(user_id=current_user.id, movie_id=movie_id).first()
+    if rating:
+        db.session.delete(rating)
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False}), 404

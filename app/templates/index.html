@@ -3,62 +3,132 @@
 {% block title %}Popular Movies{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1>Popular Movies</h1>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    background-color: #fff8e1;
+  }
 
-    <!-- 🔎 Пошук -->
-    <div class="row mb-4">
+  .main-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: #0D0D0D;
+    color: white;
+    padding: 15px 30px; /* боковий падінг */
+  }
+
+  .hero-section {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background-image: url("/static/img/i4.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .hero-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: rgba(45, 36, 33, 0.8);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 60px 0;
+  }
+
+  .hero-title {
+    font-size: 3rem;
+    text-transform: uppercase;
+    color: white;
+    margin-bottom: 30px;
+  }
+
+  .container-dark {
+    padding: 0;
+    margin-top: 20px;
+  }
+
+  .form-control,
+  .form-select {
+    background-color: #fff;
+    color: #000;
+  }
+
+  .btn-primary {
+    background-color: #f9a825;
+    border-color: #f9a825;
+  }
+
+  .btn-primary:hover {
+    background-color: #f57f17;
+    border-color: #f57f17;
+  }
+
+  .list-group-item {
+    background-color: #59463B;
+    color: white;
+    border: none;
+    margin-bottom: 10px;
+  }
+</style>
+
+
+<div class="main-wrapper">
+  <div class="hero-section">
+    <div class="hero-content">
+      <h1 class="hero-title">Popular Movies</h1>
+      <div class="row justify-content-center">
         <div class="col-md-6">
-            <input type="text" id="search-input" class="form-control" placeholder="Search movie by title...">
+          <input type="text" id="search-input" class="form-control" placeholder="Search movie by title...">
         </div>
         <div class="col-md-2">
-            <button id="search-button" class="btn btn-primary w-100">Search</button>
+          <button id="search-button" class="btn btn-light w-100">Search</button>
         </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Сортування -->
+  <div class="container-dark">
     <div class="row mb-4">
-        <div class="col-md-4">
-            <select id="sort-select" class="form-select">
-                <option value="popularity" selected>Sort by Popularity</option>
-                <option value="release">Sort by Release Date</option>
-                <option value="imdb_score">Sort by IMDb Score</option>
-            </select>
+      <div class="col-md-4">
+        <select id="sort-select" class="form-select">
+          <option value="popularity" selected>Sort by Popularity</option>
+          <option value="release">Sort by Release Date</option>
+          <option value="imdb_score">Sort by IMDb Score</option>
+        </select>
+      </div>
+      <div class="col-md-4 d-flex align-items-center">
+        <div class="form-check me-3">
+          <input class="form-check-input" type="radio" name="sort-order" id="descending" value="desc" checked>
+          <label class="form-check-label" for="descending">Descending</label>
         </div>
-        <div class="col-md-4 d-flex align-items-center">
-            <div class="form-check me-3">
-                <input class="form-check-input" type="radio" name="sort-order" id="descending" value="desc" checked>
-                <label class="form-check-label" for="descending">
-                    Descending
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="sort-order" id="ascending" value="asc">
-                <label class="form-check-label" for="ascending">
-                    Ascending
-                </label>
-            </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sort-order" id="ascending" value="asc">
+          <label class="form-check-label" for="ascending">Ascending</label>
         </div>
+      </div>
     </div>
 
-    <!-- Список фільмів -->
-    <div id="movie-list" class="list-group">
-        <!-- Фільми додає JavaScript -->
-    </div>
+    <div id="movie-list" class="list-group"></div>
 
-    <!-- Кнопка "Показати ще" -->
     <div class="d-grid mt-4">
-        <button id="load-more" class="btn btn-primary">Show More</button>
+      <button id="load-more" class="btn btn-primary">Show More</button>
     </div>
+  </div>
 </div>
 
-<!-- Передача даних у JS через глобальні змінні -->
 <script>
-    window.movies = {{ movies_json | safe }};
-    window.isAuthenticated = {{ current_user.is_authenticated | tojson | safe }};
+  window.originalMovies = {{ movies_json | tojson }};
+  window.isAuthenticated = {{ is_authenticated | tojson }};
+  window.currentUserId = {{ current_user_id | tojson }};
+  window.userRatings = {{ user_ratings | tojson }};
 </script>
-
-<!-- Підключення скрипта -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
 {% endblock %}

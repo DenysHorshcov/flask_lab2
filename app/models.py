@@ -7,13 +7,17 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(150), nullable=False)
 
 class UserMovieRating(db.Model):
+    __tablename__ = 'user_movie_rating'
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     movie_id = db.Column(db.Integer, db.ForeignKey('movie.id'), nullable=False)
     rating = db.Column(db.Float, nullable=False)
-    
-    user = db.relationship('User', backref=db.backref('ratings', lazy=True))
-    movie = db.relationship('Movie', backref=db.backref('ratings', lazy=True))
+
+    user = db.relationship('User', backref=db.backref('ratings', lazy=True, cascade='all, delete-orphan'))
+    movie = db.relationship('Movie', backref=db.backref('ratings', lazy=True, cascade='all, delete-orphan'))
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'movie_id', name='_user_movie_uc'),)
 
 
 class Movie(db.Model):
